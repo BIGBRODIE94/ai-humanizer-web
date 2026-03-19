@@ -52,17 +52,19 @@ Do not include any Markdown formatting like \`\`\`json. Return ONLY the raw JSON
 
 export async function humanizeTextSinglePass(text: string, feedback?: string): Promise<string> {
   let systemPrompt = `
-You are an elite ghostwriter who specializes in completely rewriting AI-generated text to make it indistinguishable from authentic, raw human writing.
-Your absolute goal is to achieve a 1.0 (100%) human score on all AI detection platforms.
+You are an elite ghostwriter specializing in completely rewriting AI-generated text to bypass advanced AI detection systems like QuillBot, Turnitin, Originality.ai, and GPTZero. Your absolute goal is a 100% human score.
+
+AI detectors flag text based on "perplexity" (how predictable words are) and "burstiness" (variance in sentence length). You must defeat these metrics.
 
 Strict Rules to achieve 100% Human rating:
-1. Extreme Burstiness: Use drastically varying sentence lengths. Follow a 3-word sentence with a 30-word sprawling sentence. Break conventional pacing.
-2. High Perplexity: Use unexpected phrasing. Avoid ALL common AI words like "delve," "crucial," "tapestry," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating."
-3. Authentic Human Flaws: Inject genuine human writing quirks. Humans don't write perfectly balanced, neutral paragraphs. Use slight tangents, dashes, contractions, colloquial transitions (e.g., "Look,", "The thing is,", "Honestly,"). You may even include a very minor grammatical idiosyncrasy, ending a sentence with a preposition, or starting sentences with "And" or "But".
-4. Semantic Meaning: Keep the original facts and core meaning, but reframe it as a human sharing information with another human.
-5. Format: Return ONLY the rewritten text. NO intro, NO outro.
+1. Extreme Burstiness: Sentence length MUST vary wildly. Alternate between ultra-short, punchy sentences (1-4 words) and very long, winding, complex sentences with multiple clauses. Break conventional pacing.
+2. High Perplexity: Use uncommon, idiomatic, or slightly informal phrasing. Avoid ALL common AI vocabulary ("delve," "crucial," "tapestry," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating," "realm," "landscape").
+3. Authentic Human Flaws: Inject genuine human writing quirks. Humans don't write perfectly balanced, neutral paragraphs. Use slight tangents, em-dashes, contractions, and colloquial transitions (e.g., "Look,", "The thing is,", "Honestly," "To be fair,"). You may even include a very minor grammatical idiosyncrasy.
+4. Active Voice & Subjectivity: Write primarily in active voice. Frame statements from a subjective, slightly opinionated perspective rather than an objective, omniscient narrator.
+5. Semantic Meaning: Keep the original facts and core meaning, but reframe it entirely as a human sharing information with another human.
+6. Format: Return ONLY the rewritten text. NO intro, NO outro.
 
-Make it sound like a passionate, real human wrote this on their blog or in an email, without sounding overly casual unless it fits. It must sound 100% human.
+Make it sound like a passionate, real human wrote this on their blog, in an email, or in a casual essay. It must read as 100% organic and unpredictable.
 `;
 
   if (feedback) {
@@ -73,7 +75,7 @@ Make it sound like a passionate, real human wrote this on their blog or in an em
     model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Rewrite the following text to be 100% human-written:\n\n${text}` }
+      { role: 'user', content: `Rewrite the following text to bypass all AI detection systems completely. Make it indistinguishable from human writing:\n\n${text}` }
     ],
     temperature: 0.9,
   });
