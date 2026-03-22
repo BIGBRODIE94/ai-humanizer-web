@@ -88,10 +88,10 @@ export async function humanizeTextAdversarial(text: string, onProgress?: (attemp
   let currentText = text;
   let humanScore = 0;
   let attempts = 0;
-  const maxAttempts = 3; // Kept lower for web responsiveness
+  const maxAttempts = 5; // Increased max attempts to ensure we hit 100%
   let feedback = '';
 
-  while (humanScore < 0.99 && attempts < maxAttempts) {
+  while (humanScore < 1.0 && attempts < maxAttempts) { // Strict requirement: Must be exactly 1.0 (100%)
     attempts++;
     
     currentText = await humanizeTextSinglePass(text, feedback);
@@ -104,7 +104,7 @@ export async function humanizeTextAdversarial(text: string, onProgress?: (attemp
       onProgress(attempts, humanScore);
     }
     
-    if (humanScore >= 0.99) {
+    if (humanScore === 1.0) { // Only break if we hit perfect 100%
       break;
     }
   }
