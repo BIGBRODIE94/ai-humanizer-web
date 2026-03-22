@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
 export async function POST(request: Request) {
@@ -16,6 +15,8 @@ export async function POST(request: Request) {
 
     // Handle PDF extraction
     if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      // @ts-ignore
+      const pdfParse = require('pdf-parse');
       const pdfData = await pdfParse(buffer);
       extractedText = pdfData.text;
     } 
