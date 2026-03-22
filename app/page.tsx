@@ -6,7 +6,36 @@ export default function Home() {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [action, setAction] = useState<'detect' | 'humanize' | null>(null);
+  const [action, setAction] = useState<'detect' | 'humanize' | 'upload' | null>(null);
+
+  const handleHumanize = async () => {
+    if (!inputText.trim()) return;
+
+    setLoading(true);
+    setAction('humanize');
+    setDetectionResult(null);
+    setHumanizeStats(null);
+    setOutputText('');
+
+    try {
+      const res = await fetch('/api/humanize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: inputText }),
+      });
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error);
+      
+      setOutputText(data.text);
+      setHumanizeStats({ score: data.score, attempts: data.attempts });
+    } catch (err: any) {
+      alert(err.message || 'Something went wrong. The text might be too long or the API timed out.');
+    } finally {
+      setLoading(false);
+      setAction(null);
+    }
+  };
   
   const [detectionResult, setDetectionResult] = useState<any>(null);
   const [humanizeStats, setHumanizeStats] = useState<any>(null);
@@ -39,32 +68,33 @@ export default function Home() {
     }
   };
 
-  const handleHumanize = async () => {
-    if (!inputText.trim()) return;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     setLoading(true);
-    setAction('humanize');
-    setDetectionResult(null);
-    setHumanizeStats(null);
-    setOutputText('');
-
+    setAction('upload');
+    
     try {
-      const res = await fetch('/api/humanize', {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText }),
+        body: formData,
       });
+      
       const data = await res.json();
-      
       if (!res.ok) throw new Error(data.error);
-      
-      setOutputText(data.text);
-      setHumanizeStats({ score: data.score, attempts: data.attempts });
+
+      setInputText(data.text);
     } catch (err: any) {
-      alert(err.message || 'Something went wrong. The text might be too long or the API timed out.');
+      alert(err.message || 'Failed to read file');
     } finally {
       setLoading(false);
       setAction(null);
+      // Reset input value so the same file can be uploaded again if needed
+      e.target.value = '';
     }
   };
 
@@ -89,9 +119,21 @@ export default function Home() {
           <div className="flex flex-col space-y-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Original Text</h2>
-              <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-full">
-                {inputText.length} chars
-              </span>
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-full">
+                  {inputText.length} chars
+                </span>
+                <label className="cursor-pointer text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-3 py-1 rounded-full transition-colors flex items-center">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  Upload File
+                  <input 
+                    type="file" 
+                    accept=".txt,.pdf,.doc,.docx" 
+                    onChange={handleFileUpload} 
+                    className="hidden" 
+                  />
+                </label>
+              </div>
             </div>
             
             <textarea 
@@ -144,7 +186,9 @@ export default function Home() {
                 <div className="h-full flex flex-col items-center justify-center text-blue-600 space-y-4">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                   <p className="font-medium animate-pulse">
-                    {action === 'detect' ? 'Scanning text for AI signatures...' : 'Running adversarial feedback loop...'}
+                    {action === 'detect' ? 'Scanning text for AI signatures...' : 
+                     action === 'upload' ? 'Extracting text from document...' : 
+                     'Running adversarial feedback loop...'}
                   </p>
                 </div>
               )}
