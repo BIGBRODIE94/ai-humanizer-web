@@ -75,7 +75,7 @@ export default function Home() {
         {/* Header */}
         <header className="text-center space-y-4">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">
-            Advanced <span className="text-blue-600">AI Humanizer</span>
+            BIGBRODIE94 <span className="text-blue-600">AI Humanizer</span>
           </h1>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
             Detect AI-generated content with precision, or bypass detectors completely with our multi-pass adversarial rewriting engine.

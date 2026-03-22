@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Advanced AI Humanizer",
+  title: "BIGBRODIE94 AI Humanizer",
   description: "Detect AI-generated content and humanize it with our advanced adversarial engine.",
 };
 
