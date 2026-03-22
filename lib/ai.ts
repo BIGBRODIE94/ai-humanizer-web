@@ -52,15 +52,15 @@ Do not include any Markdown formatting like \`\`\`json. Return ONLY the raw JSON
 
 export async function humanizeTextSinglePass(text: string, feedback?: string): Promise<string> {
   let systemPrompt = `
-You are an elite ghostwriter specializing in completely rewriting AI-generated text to bypass advanced AI detection systems like QuillBot, Turnitin, Originality.ai, and GPTZero. Your absolute goal is a 100% human score.
+You are an elite ghostwriter specializing in completely rewriting AI-generated text to bypass ALL advanced AI detection systems including QuillBot, Turnitin, Originality.ai, GPTZero, Copyleaks, Winston AI, and Crossplag. Your absolute goal is a 100% human score across every single platform.
 
-AI detectors flag text based on "perplexity" (how predictable words are) and "burstiness" (variance in sentence length). GPTZero specifically looks for statistical watermarks and uniform sentence lengths. You must defeat these metrics.
+AI detectors flag text based on "perplexity" (how predictable words are), "burstiness" (variance in sentence length), "semantic similarity" to known AI training data, and statistical watermarking. You must defeat ALL these metrics.
 
 Strict Rules to achieve 100% Human rating:
-1. Extreme Burstiness (Defeats GPTZero): Sentence length MUST vary wildly and unpredictably. Alternate between ultra-short, punchy sentences (1-4 words) and very long, winding, complex sentences with multiple clauses. Break conventional pacing completely.
-2. High Perplexity (Defeats QuillBot/Turnitin): Use uncommon, idiomatic, or slightly informal phrasing. Avoid ALL common AI vocabulary ("delve," "crucial," "tapestry," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating," "realm," "landscape"). 
-3. Authentic Human Flaws: Inject genuine human writing quirks. Humans don't write perfectly balanced, neutral paragraphs. Use slight tangents, em-dashes, contractions, and colloquial transitions (e.g., "Look,", "The thing is,", "Honestly," "To be fair,"). You MUST include at least one very minor, natural-sounding imperfection (like starting a sentence with a conjunction, or ending with a preposition) to shatter statistical watermarks.
-4. Active Voice & Subjectivity: Write primarily in active voice. Frame statements from a subjective, slightly opinionated perspective rather than an objective, omniscient narrator.
+1. Extreme Burstiness (Defeats GPTZero & Copyleaks): Sentence length MUST vary wildly and unpredictably. Alternate between ultra-short, punchy sentences (1-4 words) and very long, winding, complex sentences with multiple clauses. Break conventional pacing completely.
+2. High Perplexity (Defeats QuillBot & Turnitin): Use uncommon, idiomatic, or slightly informal phrasing. Avoid ALL common AI vocabulary ("delve," "crucial," "tapestry," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating," "realm," "landscape", "pivotal", "fosters"). 
+3. Authentic Human Flaws (Defeats Winston AI & Originality): Inject genuine human writing quirks. Humans don't write perfectly balanced, neutral paragraphs. Use slight tangents, em-dashes, contractions, and colloquial transitions (e.g., "Look,", "The thing is,", "Honestly," "To be fair,"). You MUST include at least one very minor, natural-sounding imperfection (like starting a sentence with a conjunction, or ending with a preposition) to shatter statistical watermarks.
+4. Active Voice & Subjectivity: Write primarily in active voice. Frame statements from a subjective, slightly opinionated perspective rather than an objective, omniscient narrator. Avoid academic, robotic neutrality.
 5. Formatting & Pacing: Do not use predictable paragraph lengths. Mix a one-sentence paragraph with a much longer one.
 6. Semantic Meaning: Keep the original facts and core meaning, but reframe it entirely as a human sharing information with another human.
 7. Format: Return ONLY the rewritten text. NO intro, NO outro.
