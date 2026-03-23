@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { analyzeText } from '@/lib/ai';
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const { text } = await request.json();

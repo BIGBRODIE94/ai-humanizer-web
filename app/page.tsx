@@ -7,38 +7,37 @@ export default function Home() {
   const [outputText, setOutputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [action, setAction] = useState<'detect' | 'humanize' | 'upload' | null>(null);
-
-  const handleHumanize = async () => {
-    if (!inputText.trim()) return;
-
-    setLoading(true);
-    setAction('humanize');
-    setDetectionResult(null);
-    setHumanizeStats(null);
-    setOutputText('');
-
-    try {
-      const res = await fetch('/api/humanize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText }),
-      });
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.error);
-      
-      setOutputText(data.text);
-      setHumanizeStats({ score: data.score, attempts: data.attempts });
-    } catch (err: any) {
-      alert(err.message || 'Something went wrong. The text might be too long or the API timed out.');
-    } finally {
-      setLoading(false);
-      setAction(null);
-    }
-  };
+  const [chunkProgress, setChunkProgress] = useState('');
   
   const [detectionResult, setDetectionResult] = useState<any>(null);
   const [humanizeStats, setHumanizeStats] = useState<any>(null);
+
+  const chunkText = (text: string, maxChars = 1500) => {
+    const paragraphs = text.split('\n\n');
+    const chunks = [];
+    let currentChunk = '';
+
+    for (const p of paragraphs) {
+      if (currentChunk.length + p.length > maxChars && currentChunk.length > 0) {
+        chunks.push(currentChunk);
+        currentChunk = '';
+      }
+      currentChunk += (currentChunk ? '\n\n' : '') + p;
+    }
+    if (currentChunk) chunks.push(currentChunk);
+    
+    // Fallback if a single paragraph is too massive
+    return chunks.flatMap(chunk => {
+      if (chunk.length > maxChars * 1.5) {
+        const subchunks = [];
+        for (let i = 0; i < chunk.length; i += maxChars) {
+          subchunks.push(chunk.substring(i, i + maxChars));
+        }
+        return subchunks;
+      }
+      return chunk;
+    });
+  };
 
   const handleDetect = async () => {
     if (!inputText.trim()) return;
@@ -55,9 +54,16 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: inputText }),
       });
-      const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error);
+      const textResponse = await res.text();
+      let data;
+      try {
+        data = JSON.parse(textResponse);
+      } catch (e) {
+        throw new Error('Server timeout or invalid response from detector. Please try a shorter text.');
+      }
+      
+      if (!res.ok) throw new Error(data.error || 'Unknown error');
       
       setDetectionResult(data);
     } catch (err: any) {
@@ -65,6 +71,63 @@ export default function Home() {
     } finally {
       setLoading(false);
       setAction(null);
+    }
+  };
+
+  const handleHumanize = async () => {
+    if (!inputText.trim()) return;
+
+    setLoading(true);
+    setAction('humanize');
+    setDetectionResult(null);
+    setHumanizeStats(null);
+    setOutputText('');
+    setChunkProgress('');
+
+    try {
+      const chunks = chunkText(inputText, 1500);
+      let fullOutput = '';
+      let totalScore = 0;
+      let totalAttempts = 0;
+
+      for (let i = 0; i < chunks.length; i++) {
+        if (chunks.length > 1) {
+          setChunkProgress(`Processing part ${i + 1} of ${chunks.length}...`);
+        }
+        
+        const res = await fetch('/api/humanize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: chunks[i] }),
+        });
+        
+        const textResponse = await res.text();
+        let data;
+        try {
+          data = JSON.parse(textResponse);
+        } catch (e) {
+          throw new Error('Server timeout or invalid response. Vercel hobby limits reached. Try a shorter text.');
+        }
+        
+        if (!res.ok) throw new Error(data.error || 'Unknown error');
+        
+        fullOutput += (i > 0 ? '\n\n' : '') + data.text;
+        totalScore += data.score;
+        totalAttempts += data.attempts;
+        
+        setOutputText(fullOutput); // Stream progress to UI
+      }
+      
+      setHumanizeStats({ 
+        score: totalScore / chunks.length, 
+        attempts: totalAttempts 
+      });
+    } catch (err: any) {
+      alert(err.message || 'Something went wrong. The text might be too long or the API timed out.');
+    } finally {
+      setLoading(false);
+      setAction(null);
+      setChunkProgress('');
     }
   };
 
@@ -84,8 +147,15 @@ export default function Home() {
         body: formData,
       });
       
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const textResponse = await res.text();
+      let data;
+      try {
+        data = JSON.parse(textResponse);
+      } catch (e) {
+        throw new Error('Server timeout while extracting document. The file might be too large.');
+      }
+      
+      if (!res.ok) throw new Error(data.error || 'Unknown error');
 
       setInputText(data.text);
     } catch (err: any) {
@@ -93,7 +163,6 @@ export default function Home() {
     } finally {
       setLoading(false);
       setAction(null);
-      // Reset input value so the same file can be uploaded again if needed
       e.target.value = '';
     }
   };
@@ -188,7 +257,7 @@ export default function Home() {
                   <p className="font-medium animate-pulse">
                     {action === 'detect' ? 'Scanning text for AI signatures...' : 
                      action === 'upload' ? 'Extracting text from document...' : 
-                     'Running adversarial feedback loop...'}
+                     chunkProgress || 'Running adversarial feedback loop...'}
                   </p>
                 </div>
               )}
