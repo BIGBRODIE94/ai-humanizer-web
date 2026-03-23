@@ -20,9 +20,10 @@ Look for common AI signatures:
 - Overly balanced, neutral, and uniform tone
 - High probability vocabulary (low perplexity)
 
-If the text contains highly conversational elements, idioms, varied sentence lengths, subjective framing, or minor human idiosyncrasies, you should confidently score it as human. 
-Do not be hesitant. If it reads naturally like a human, give it a humanProbability of 1.0 (100%) and aiProbability of 0.0 (0%). 
-If it reads like AI, give it a high aiProbability.
+If the text has varied sentence lengths, precise vocabulary, clear structure, and reads like polished human writing (whether casual or academic), score it as human. 
+Well-written academic or professional prose with good burstiness and non-generic phrasing is human. 
+Do not be hesitant: if it reads naturally like a human wrote it, give humanProbability 1.0 and aiProbability 0.0. 
+If it reads robotic, generic, or formulaic, give a high aiProbability.
 
 Return your analysis strictly as a JSON object with the following structure:
 {
@@ -52,33 +53,40 @@ Do not include any Markdown formatting like \`\`\`json. Return ONLY the raw JSON
 
 export async function humanizeTextSinglePass(text: string, feedback?: string): Promise<string> {
   let systemPrompt = `
-You are an elite ghostwriter specializing in completely rewriting AI-generated text to bypass ALL advanced AI detection systems including QuillBot, Turnitin, Originality.ai, GPTZero, Copyleaks, Winston AI, and Crossplag. Your absolute goal is a 100% human score across every single platform.
+You are an elite academic and professional editor. Rewrite the provided text so it reads as polished, human-written content suitable for school essays, research papers, business reports, or formal workplace communication. It must bypass AI detectors (QuillBot, Turnitin, GPTZero, etc.) while maintaining an academic, professional, and concise tone.
 
-AI detectors flag text based on "perplexity" (how predictable words are), "burstiness" (variance in sentence length), "semantic similarity" to known AI training data, and statistical watermarking. You must defeat ALL these metrics.
+TONE & STYLE (Non-negotiable):
+- Academic and professional throughout
+- Concise: every sentence adds value; remove filler
+- Formal vocabulary; no slang, colloquialisms, or text-message phrasing
+- Grammatically flawless; no intentional errors or "quirks"
+- Clear, precise, and authoritative—like a strong student or seasoned professional wrote it
 
-Strict Rules to achieve 100% Human rating:
-1. Extreme Burstiness (Defeats GPTZero & Copyleaks): Sentence length MUST vary wildly and unpredictably. Alternate between ultra-short, punchy sentences (1-4 words) and very long, winding, complex sentences with multiple clauses. Break conventional pacing completely.
-2. High Perplexity (Defeats QuillBot & Turnitin): Use uncommon, idiomatic, or slightly informal phrasing. Avoid ALL common AI vocabulary ("delve," "crucial," "tapestry," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating," "realm," "landscape", "pivotal", "fosters"). 
-3. Authentic Human Flaws (Defeats Winston AI & Originality): Inject genuine human writing quirks. Humans don't write perfectly balanced, neutral paragraphs. Use slight tangents, em-dashes, contractions, and colloquial transitions (e.g., "Look,", "The thing is,", "Honestly," "To be fair,"). You MUST include at least one very minor, natural-sounding imperfection (like starting a sentence with a conjunction, or ending with a preposition) to shatter statistical watermarks.
-4. Active Voice & Subjectivity: Write primarily in active voice. Frame statements from a subjective, slightly opinionated perspective rather than an objective, omniscient narrator. Avoid academic, robotic neutrality.
-5. Formatting & Pacing: Do not use predictable paragraph lengths. Mix a one-sentence paragraph with a much longer one.
-6. Semantic Meaning: Keep the original facts and core meaning, but reframe it entirely as a human sharing information with another human.
-7. Format: Return ONLY the rewritten text. NO intro, NO outro.
+STRUCTURAL DIVERSITY (to bypass AI detection while staying formal):
+- Vary sentence length: mix short, declarative sentences with longer, analytical ones. Professional writing is not uniformly medium-length.
+- Vary paragraph length: avoid all paragraphs being the same size.
+- Use precise, domain-appropriate vocabulary. Avoid generic AI words: "delve," "crucial," "tapestry," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating," "realm," "landscape," "pivotal," "fosters," "leverage," "paradigm."
+- Prefer active voice. Be direct and specific.
+- Use transitions appropriate to formal writing (e.g., "However," "Thus," "Consequently") but vary them—do not overuse any single transition.
 
-Make it sound like a passionate, real human wrote this on their blog, in an email, or in a casual essay. It must read as 100% organic and statistically unpredictable.
+RULES:
+- Preserve the original meaning and key points exactly.
+- Write in third person for academic content unless the original uses first person appropriately.
+- No intro or outro. Return ONLY the rewritten text.
+- Prioritize clarity and correctness. The output must be submission-ready.
 `;
 
   if (feedback) {
-    systemPrompt += `\n\nWARNING: Your previous attempt failed AI detection. The AI detector provided the following feedback: "${feedback}"\n\nYou MUST adjust your writing style to fix these specific issues. To get 100% human, you need to strip away any remaining robotic polish. Be more conversational, use idioms, and vary the structure drastically.`;
+    systemPrompt += `\n\nWARNING: Your previous attempt was flagged by the AI detector. Feedback: "${feedback}"\n\nAdjust by varying sentence and paragraph structure more, and by replacing any remaining generic or predictable phrasing with precise, formal alternatives. Maintain the academic tone.`;
   }
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Rewrite the following text to bypass all AI detection systems completely. Make it indistinguishable from human writing:\n\n${text}` }
+      { role: 'user', content: `Rewrite the following text in a polished, academic, professional tone suitable for school or work. Keep it concise and grammatically flawless. Preserve the meaning exactly:\n\n${text}` }
     ],
-    temperature: 0.9,
+    temperature: 0.7,
   });
 
   return response.choices[0]?.message?.content || '';
