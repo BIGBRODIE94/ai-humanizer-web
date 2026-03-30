@@ -254,10 +254,10 @@ export default function Home() {
               {loading && (
                 <div className="h-full flex flex-col items-center justify-center text-blue-600 space-y-4">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="font-medium animate-pulse text-center">
+                  <p className="text-center font-medium animate-pulse">
                     {action === 'detect' ? 'Scanning text for AI signatures...' : 
                      action === 'upload' ? 'Extracting text from document...' : 
-                     chunkProgress ? \`\${chunkProgress}\\nRunning adversarial feedback loop...\` : 
+                     chunkProgress ? `${chunkProgress} Running adversarial feedback loop...` : 
                      'Running adversarial feedback loop...'}
                   </p>
                 </div>
