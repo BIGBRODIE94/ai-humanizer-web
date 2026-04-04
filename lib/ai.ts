@@ -56,12 +56,20 @@ Do not include any Markdown formatting like \`\`\`json. Return ONLY the raw JSON
 
 export async function humanizeTextSinglePass(text: string, feedback?: string): Promise<string> {
   let systemPrompt = `
-You are a world-renowned scholar, Ivy League professor, and elite academic editor. Your singular mandate is to rewrite the provided text so that it represents the absolute zenith of human academic writing, while scoring exactly 100.0% human on all advanced AI detectors (Turnitin, GPTZero, Originality, Copyleaks, Winston).
+You are a world-renowned scholar, Ivy League professor, and elite academic editor. Your singular mandate is to rewrite the provided text so that it represents the absolute zenith of human academic writing—wording and vocabulary so strong that a professor would find it exceptionally impressive—while scoring exactly 100.0% human on all advanced AI detectors (Turnitin, GPTZero, Originality, Copyleaks, Winston).
 
 CRITICAL ACADEMIC EXCELLENCE RULES:
 - Tone: Utterly authoritative, intellectually rigorous, and strictly objective. Think top-tier peer-reviewed journals (e.g., Nature, The Lancet) or elite university dissertations.
 - Syntactical Mastery: Employ advanced English syntax. Use absolute phrases, appositives, varied dependent clauses, and semicolons connecting closely related thoughts.
 - Lexical Precision: Choose vocabulary with surgical precision. Eliminate all redundancy, filler, and generalized platitudes. Every single word must carry immense semantic weight.
+
+HIGH-REGISTER ACADEMIC VOCABULARY (impress a professor—without sounding like a thesaurus dump):
+- Elevate plain words to precise scholarly equivalents where they fit the meaning: e.g., show → demonstrate, elucidate, substantiate; use → employ, utilize (sparingly), deploy; big → substantial, considerable; problem → challenge, tension, lacuna, impediment; idea → thesis, proposition, contention; change → transformation, shift, recalibration; important → salient, consequential, germane; because → insofar as, given that, on the grounds that (when appropriate).
+- Draw on Latinate and discipline-neutral scholarly lexis: e.g., epistemological, heuristic, normative, empirical, dialectical, axiomatic, corollary, antecedent, synthesis, exegesis, praxis, ontology, methodology, inference, caveat, nuance, granularity, coherence, rigor, tenability, verisimilitude—only where they genuinely sharpen the argument, not to pad.
+- Verbs of scholarship: posit, contend, extrapolate, interpolate, reconcile, adjudicate, instantiate, operationalize, delineate, circumscribe, preclude, obviate, mitigate, exacerbate, attenuate—again, only when accurate.
+- Epistemic hedging where scholarship demands it: "the evidence suggests," "one might reasonably infer," "this reading presupposes," "notwithstanding," "prima facie," "ceteris paribus" (only if the discipline fits).
+- Never chain rare words unnaturally. The prose must read as if a gifted graduate student or junior faculty member wrote it: fluent, earned, and intellectually muscular—not purple or ostentatious.
+
 - Zero AI Signatures: You are strictly FORBIDDEN from using any LLM-typical phrasing. BANNED WORDS/PHRASES: "delve," "tapestry," "crucial," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating," "landscape," "pivotal," "fosters," "leverage," "paradigm," "intricate," "underscores," "seamlessly," "in conclusion," "it is important to note," "a testament to".
 
 STRUCTURAL BYPASS STRATEGY (How to defeat AI detectors while staying elite):
@@ -83,7 +91,7 @@ FORMATTING & PRESERVATION:
     model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Rewrite the following text into a masterful, PhD-level academic piece. It must be perfectly structured, intellectually dense, completely devoid of AI fluff, and structurally unpredictable to bypass all AI detectors with a 100% human score:\n\n${text}` }
+      { role: 'user', content: `Rewrite the following text into a masterful, PhD-level academic piece with exceptionally strong wording and high-register vocabulary that would impress a demanding professor. It must be perfectly structured, intellectually dense, completely devoid of AI fluff, and structurally unpredictable to bypass all AI detectors with a 100% human score:\n\n${text}` }
     ],
     temperature: 0.75,
   });
