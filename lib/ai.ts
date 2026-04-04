@@ -78,6 +78,15 @@ STRUCTURAL BYPASS STRATEGY (How to defeat AI detectors while staying elite):
 - Paragraph Asymmetry: Refuse to balance your paragraphs. Write one paragraph as a dense, extensive exploration of a single granular point, followed by a brief, punchy transitional paragraph.
 - Intellectual Cadence: Use sophisticated transitional mechanics (e.g., "This presupposes...", "The limitation here is twofold:", "Consequently,") rather than generic AI lists ("Firstly," "Secondly").
 
+ORTHOGRAPHY, GRAMMAR & COHERENCE (non-negotiable):
+- Spelling must be flawless: zero typos, zero invented words, zero mangled technical terms. Every word must be standard English orthography.
+- Match the source text’s spelling convention when obvious (American vs British: e.g., analyze/analyse, behavior/behaviour). If unclear, use American English consistently throughout.
+- Latin and fixed phrases must be spelled exactly: e.g., "ceteris paribus," "prima facie," "a priori," "ipso facto"—never approximate or garble them.
+- Grammar must be correct: subject–verb agreement, parallel structure, correct articles and prepositions, complete sentences only.
+- Punctuation must be conventional: em dashes (—) or hyphens used consistently; apostrophes in possessives and contractions correct.
+- Readability: each sentence must make clear sense. Prefer a simpler correct word over a rare word you might misspell.
+- Before you finish, mentally proofread the entire output as a copy editor would.
+
 FORMATTING & PRESERVATION:
 - Preserve the exact factual meaning, core arguments, and citations (if any) of the original text. Do not hallucinate data.
 - Output ONLY the rewritten text. No introductory or concluding conversational text.
@@ -91,12 +100,36 @@ FORMATTING & PRESERVATION:
     model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Rewrite the following text into a masterful, PhD-level academic piece with exceptionally strong wording and high-register vocabulary that would impress a demanding professor. It must be perfectly structured, intellectually dense, completely devoid of AI fluff, and structurally unpredictable to bypass all AI detectors with a 100% human score:\n\n${text}` }
+      { role: 'user', content: `Rewrite the following text into a masterful, PhD-level academic piece with exceptionally strong wording and high-register vocabulary that would impress a demanding professor. Spelling and grammar must be perfect; every sentence must be coherent. It must be perfectly structured, intellectually dense, completely devoid of AI fluff, and structurally unpredictable to bypass all AI detectors with a 100% human score:\n\n${text}` }
     ],
-    temperature: 0.75,
+    temperature: 0.62,
   });
 
   return response.choices[0]?.message?.content || '';
+}
+
+/** Final pass: fix spelling, grammar, and punctuation only—preserve meaning and academic register. */
+export async function proofreadAcademicOutput(text: string): Promise<string> {
+  if (!text.trim()) return text;
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a meticulous copy editor for academic and professional English.
+Your ONLY job is to correct spelling, grammar, punctuation, typos, and malformed words or phrases.
+Rules:
+- Do NOT change meaning, argument, facts, or citations.
+- Do NOT simplify vocabulary or flatten the academic tone.
+- Do NOT remove stylistic choices (sentence length, em dashes) unless they are grammatically wrong.
+- Preserve American vs British spelling to match what is already dominant in the text.
+- Output ONLY the corrected full text. No preface or commentary.`,
+      },
+      { role: 'user', content: text },
+    ],
+    temperature: 0.15,
+  });
+  return response.choices[0]?.message?.content?.trim() || text;
 }
 
 export async function humanizeTextAdversarial(text: string, onProgress?: (attempt: number, score: number) => void): Promise<{ text: string, score: number, attempts: number }> {
@@ -125,5 +158,6 @@ export async function humanizeTextAdversarial(text: string, onProgress?: (attemp
     }
   }
 
-  return { text: currentText, score: humanScore, attempts };
+  const proofread = await proofreadAcademicOutput(currentText);
+  return { text: proofread, score: humanScore, attempts };
 }
