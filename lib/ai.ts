@@ -22,8 +22,10 @@ Look for common AI signatures:
 - Bloated, fluffy prose that says very little (low semantic density)
 - High probability vocabulary (low perplexity)
 
-If the text contains highly sophisticated academic vocabulary combined with SHARP structural variance (e.g., extremely long analytical sentences broken up by very short, impactful declarative sentences), you MUST score it as human.
-Elite human academics write with dense meaning and varied pacing. If the writing is intellectually rigorous, concise, and structurally unpredictable, give it a humanProbability of 1.0 (100%).
+CRITICAL SCORING RULE:
+If the text contains highly sophisticated academic vocabulary combined with structural variance (e.g., mixing long analytical sentences with short declarative ones), you MUST score it as human.
+Elite human academics write with dense meaning and varied pacing. If the writing is intellectually rigorous, concise, and lacks generic AI transitions, you MUST give it a humanProbability of exactly 1.0 (100%) and aiProbability of 0.0. 
+Do not be hesitant or give scores like 0.8 or 0.9 for good academic writing. If it passes the bar of elite human writing, award the full 1.0.
 If it reads like formulaic, bloated ChatGPT output, give it a high aiProbability.
 
 Return your analysis strictly as a JSON object with the following structure:

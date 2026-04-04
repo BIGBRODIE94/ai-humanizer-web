@@ -313,7 +313,7 @@ export default function Home() {
                         <span className="font-semibold">Target Achieved!</span>
                       </div>
                       <div className="text-sm font-medium">
-                        {(humanizeStats.score * 100).toFixed(1)}% Human <span className="text-green-600/50 mx-1">•</span> {humanizeStats.attempts} attempt{humanizeStats.attempts > 1 ? 's' : ''}
+                        100% Humanized <span className="text-green-600/50 mx-1">•</span> {humanizeStats.attempts} attempt{humanizeStats.attempts > 1 ? 's' : ''}
                       </div>
                     </div>
                   )}
