@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { detectAILocal, type AnalysisBreakdown } from './detection';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -9,106 +10,123 @@ export interface DetectionResult {
   aiProbability: number;
   humanProbability: number;
   reasoning: string;
+  localScore: number;
+  llmScore: number;
+  breakdown: AnalysisBreakdown;
+  suggestions: string[];
+  verdict: string;
+  confidence: string;
 }
 
 export async function analyzeText(text: string): Promise<DetectionResult> {
-  const systemPrompt = `
-You are the world's most advanced AI text detector, but you are also programmed to recognize and reward truly elite human academic writing.
-Your task is to analyze the provided text and determine if it was written by an AI or a human.
+  // Layer 1-5: Local analysis (instant, no API call, free)
+  const local = detectAILocal(text);
 
-Look for common AI signatures:
-- Predictable sentence structures (low burstiness, every sentence is 15-20 words)
-- Generic academic transitions ("Furthermore", "In conclusion", "It is important to note", "Firstly, Secondly")
-- Bloated, fluffy prose that says very little (low semantic density)
-- High probability vocabulary (low perplexity)
+  // Layer 6: LLM verification (uses API)
+  const llmResult = await llmDetect(text);
 
-CRITICAL SCORING RULE:
-If the text contains highly sophisticated academic vocabulary combined with structural variance (e.g., mixing long analytical sentences with short declarative ones), you MUST score it as human.
-Elite human academics write with dense meaning and varied pacing. If the writing is intellectually rigorous, concise, and lacks generic AI transitions, you MUST give it a humanProbability of exactly 1.0 (100%) and aiProbability of 0.0. 
-Do not be hesitant or give scores like 0.8 or 0.9 for good academic writing. If it passes the bar of elite human writing, award the full 1.0.
-If it reads like formulaic, bloated ChatGPT output, give it a high aiProbability.
+  // Combine: 65% local engine, 35% LLM (local engine is more reliable)
+  const combined = local.aiProbability * 0.65 + llmResult.score * 0.35;
+  const finalScore = Math.max(0, Math.min(100, Math.round(combined * 10) / 10));
 
-Return your analysis strictly as a JSON object with the following structure:
-{
-  "isAi": boolean,
-  "aiProbability": number (from 0.0 to 1.0),
-  "humanProbability": number (from 0.0 to 1.0),
-  "reasoning": string (a short 2-3 sentence explanation of your findings)
+  const isAi = finalScore >= 50;
+
+  return {
+    isAi,
+    aiProbability: finalScore / 100,
+    humanProbability: (100 - finalScore) / 100,
+    reasoning: llmResult.reasoning,
+    localScore: local.aiProbability,
+    llmScore: llmResult.score,
+    breakdown: local.breakdown,
+    suggestions: local.suggestions,
+    verdict: local.verdict,
+    confidence: local.confidence,
+  };
 }
 
-Do not include any Markdown formatting like \`\`\`json. Return ONLY the raw JSON string.
-`;
+async function llmDetect(text: string): Promise<{ score: number; reasoning: string }> {
+  const truncated = text.length > 8000 ? text.substring(0, 8000) + '\n\n[text truncated]' : text;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Analyze the following text:\n\n${text}` }
-    ],
-    temperature: 0,
-  });
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: LLM_DETECTION_PROMPT },
+        { role: 'user', content: `Analyze this text:\n\n---\n${truncated}\n---` }
+      ],
+      temperature: 0.1,
+    });
 
-  const content = response.choices[0]?.message?.content || '';
-  const cleanResponse = content.replace(/```json/g, '').replace(/```/g, '').trim();
-  
-  return JSON.parse(cleanResponse) as DetectionResult;
+    const content = response.choices[0]?.message?.content || '';
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    return {
+      score: Math.max(0, Math.min(100, Number(parsed.aiProbability) || 50)),
+      reasoning: String(parsed.reasoning || 'No reasoning'),
+    };
+  } catch {
+    return { score: 50, reasoning: 'LLM analysis unavailable' };
+  }
 }
+
+const LLM_DETECTION_PROMPT = `You are an expert AI text detection system. Determine the probability the text was AI-generated.
+
+Analyze these signals:
+1. Sentence length uniformity (AI keeps sentences similar length)
+2. Vocabulary predictability and common collocations
+3. Transition word overuse (However, Furthermore, Additionally at starts)
+4. Hedging phrases (It is important to note, It should be noted)
+5. AI vocabulary (delve, tapestry, landscape, multifaceted, paradigm, robust)
+6. Lack of contractions, colloquialisms, personal voice
+7. Paragraph structure symmetry
+8. Semantic repetition (same idea rephrased)
+9. Overly formal vocabulary for the topic
+10. Perfect logical flow without human tangents
+
+Be STRICT. Most AI text is 70-95%. Human text is 5-30%.
+
+Respond in EXACT JSON (no markdown): {"aiProbability": <0-100>, "reasoning": "<2-3 sentences>"}`;
 
 export async function humanizeTextSinglePass(text: string, feedback?: string): Promise<string> {
-  let systemPrompt = `
-You are a world-renowned scholar, Ivy League professor, and elite academic editor. Your singular mandate is to rewrite the provided text so that it represents the absolute zenith of human academic writing—wording and vocabulary so strong that a professor would find it exceptionally impressive—while scoring exactly 100.0% human on all advanced AI detectors (Turnitin, GPTZero, Originality, Copyleaks, Winston).
-
-CRITICAL ACADEMIC EXCELLENCE RULES:
-- Tone: Utterly authoritative, intellectually rigorous, and strictly objective. Think top-tier peer-reviewed journals (e.g., Nature, The Lancet) or elite university dissertations.
-- Syntactical Mastery: Employ advanced English syntax. Use absolute phrases, appositives, varied dependent clauses, and semicolons connecting closely related thoughts.
-- Lexical Precision: Choose vocabulary with surgical precision. Eliminate all redundancy, filler, and generalized platitudes. Every single word must carry immense semantic weight.
-
-HIGH-REGISTER ACADEMIC VOCABULARY (impress a professor—without sounding like a thesaurus dump):
-- Elevate plain words to precise scholarly equivalents where they fit the meaning: e.g., show → demonstrate, elucidate, substantiate; use → employ, utilize (sparingly), deploy; big → substantial, considerable; problem → challenge, tension, lacuna, impediment; idea → thesis, proposition, contention; change → transformation, shift, recalibration; important → salient, consequential, germane; because → insofar as, given that, on the grounds that (when appropriate).
-- Draw on Latinate and discipline-neutral scholarly lexis: e.g., epistemological, heuristic, normative, empirical, dialectical, axiomatic, corollary, antecedent, synthesis, exegesis, praxis, ontology, methodology, inference, caveat, nuance, granularity, coherence, rigor, tenability, verisimilitude—only where they genuinely sharpen the argument, not to pad.
-- Verbs of scholarship: posit, contend, extrapolate, interpolate, reconcile, adjudicate, instantiate, operationalize, delineate, circumscribe, preclude, obviate, mitigate, exacerbate, attenuate—again, only when accurate.
-- Epistemic hedging where scholarship demands it: "the evidence suggests," "one might reasonably infer," "this reading presupposes," "notwithstanding," "prima facie," "ceteris paribus" (only if the discipline fits).
-- Never chain rare words unnaturally. The prose must read as if a gifted graduate student or junior faculty member wrote it: fluent, earned, and intellectually muscular—not purple or ostentatious.
-
-- Zero AI Signatures: You are strictly FORBIDDEN from using any LLM-typical phrasing. BANNED WORDS/PHRASES: "delve," "tapestry," "crucial," "furthermore," "moreover," "testament," "ultimately," "multifaceted," "navigating," "landscape," "pivotal," "fosters," "leverage," "paradigm," "intricate," "underscores," "seamlessly," "in conclusion," "it is important to note," "a testament to".
-
-STRUCTURAL BYPASS STRATEGY (How to defeat AI detectors while staying elite):
-- Shatter Predictability: AI models write in uniform, mathematically predictable chunks. You must aggressively break this pattern. 
-- Extreme Burstiness: Follow a sprawling, highly complex 45-word analytical sentence (complete with em-dashes and embedded clauses) immediately with a blunt, 3-word declarative conclusion. This destroys statistical watermarks.
-- Paragraph Asymmetry: Refuse to balance your paragraphs. Write one paragraph as a dense, extensive exploration of a single granular point, followed by a brief, punchy transitional paragraph.
-- Intellectual Cadence: Use sophisticated transitional mechanics (e.g., "This presupposes...", "The limitation here is twofold:", "Consequently,") rather than generic AI lists ("Firstly," "Secondly").
-
-ORTHOGRAPHY, GRAMMAR & COHERENCE (non-negotiable):
-- Spelling must be flawless: zero typos, zero invented words, zero mangled technical terms. Every word must be standard English orthography.
-- Match the source text’s spelling convention when obvious (American vs British: e.g., analyze/analyse, behavior/behaviour). If unclear, use American English consistently throughout.
-- Latin and fixed phrases must be spelled exactly: e.g., "ceteris paribus," "prima facie," "a priori," "ipso facto"—never approximate or garble them.
-- Grammar must be correct: subject–verb agreement, parallel structure, correct articles and prepositions, complete sentences only.
-- Punctuation must be conventional: em dashes (—) or hyphens used consistently; apostrophes in possessives and contractions correct.
-- Readability: each sentence must make clear sense. Prefer a simpler correct word over a rare word you might misspell.
-- Before you finish, mentally proofread the entire output as a copy editor would.
-
-FORMATTING & PRESERVATION:
-- Preserve the exact factual meaning, core arguments, and citations (if any) of the original text. Do not hallucinate data.
-- Output ONLY the rewritten text. No introductory or concluding conversational text.
-`;
+  let systemPrompt = HUMANIZER_PROMPT;
 
   if (feedback) {
-    systemPrompt += `\n\nWARNING: The AI detector flagged your previous attempt or found it lacking. Detector Feedback: "${feedback}"\n\nYou must aggressively increase the sentence-length variance (burstiness) and completely remove any remaining predictable, formulaic academic transitions. Make the flow more organic, dense, and distinctly human-authored at an elite academic level.`;
+    systemPrompt += `\n\nWARNING — PREVIOUS ATTEMPT FAILED DETECTION. Detector feedback: "${feedback}"\n\nYou MUST aggressively increase burstiness, simplify vocabulary, remove any remaining formal transitions, and make the flow more organic and distinctly human.`;
   }
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Rewrite the following text into a masterful, PhD-level academic piece with exceptionally strong wording and high-register vocabulary that would impress a demanding professor. Spelling and grammar must be perfect; every sentence must be coherent. It must be perfectly structured, intellectually dense, completely devoid of AI fluff, and structurally unpredictable to bypass all AI detectors with a 100% human score:\n\n${text}` }
+      { role: 'user', content: text }
     ],
-    temperature: 0.62,
+    temperature: 0.9,
+    presence_penalty: 0.2,
+    frequency_penalty: 0.3,
   });
 
   return response.choices[0]?.message?.content || '';
 }
 
-/** Final pass: fix spelling, grammar, and punctuation only—preserve meaning and academic register. */
+const HUMANIZER_PROMPT = `You are an expert human writer and adversarial linguist. Your ONLY job is to rewrite the given text so it reads as authentically human-written and completely bypasses all advanced AI detectors (QuillBot, Turnitin, GPTZero, Originality.ai).
+
+CRITICAL ADVERSARIAL RULES:
+1. SIMPLE VOCABULARY: DO NOT use SAT words or hyper-academic phrasing. Write at 8th-10th grade reading level max. Instead of "prodigious expenditures juxtaposed", use "high costs compared".
+2. HIGH BURSTINESS: Vary sentence length dramatically. Alternate between very short (3-5 words) and very long compound sentences (25+ words). NEVER place three similar-length sentences in a row.
+3. HIGH PERPLEXITY: Avoid predictable word sequences using SIMPLE words, not complex ones.
+4. NO TRANSITION WORDS: NEVER start sentences with However, Furthermore, Moreover, Additionally, Therefore, Thus, Consequently, In conclusion, Overall. Use "But", "And", "So" or start the thought directly.
+5. NO AI BUZZWORDS: BANNED: delve, tapestry, landscape, multifaceted, paradigm, holistic, synergy, leverage, robust, testament, crucial, vital, elevate, underscore, it is important to note, perennial, conundrum, prodigious, juxtaposed, suboptimal, elucidate, adjuncts, pivotal, nuanced, comprehensive, facilitate, optimize, transformative, empower, foster, streamline, groundbreaking.
+6. PARAGRAPH ASYMMETRY: Make paragraphs highly uneven. At least one paragraph should be a single sentence.
+7. IMPERFECT FLOW: Introduce slight tangents, conversational asides (using dashes or parentheses), and non-standard structures.
+8. ACTIVE VOICE ONLY: Never use passive voice.
+9. CONTRACTIONS: Use don't, can't, it's, they're, won't naturally throughout.
+10. NO LISTS: Convert all lists into flowing narrative prose.
+
+Preserve original meaning, facts, and arguments perfectly. Do not add new information.
+Respond with ONLY the rewritten text. No explanations.`;
+
 export async function proofreadAcademicOutput(text: string): Promise<string> {
   if (!text.trim()) return text;
   const response = await openai.chat.completions.create({
@@ -116,48 +134,74 @@ export async function proofreadAcademicOutput(text: string): Promise<string> {
     messages: [
       {
         role: 'system',
-        content: `You are a meticulous copy editor for academic and professional English.
-Your ONLY job is to correct spelling, grammar, punctuation, typos, and malformed words or phrases.
-Rules:
-- Do NOT change meaning, argument, facts, or citations.
-- Do NOT simplify vocabulary or flatten the academic tone.
-- Do NOT remove stylistic choices (sentence length, em dashes) unless they are grammatically wrong.
-- Preserve American vs British spelling to match what is already dominant in the text.
-- Output ONLY the corrected full text. No preface or commentary.`,
+        content: `You are a meticulous copy editor. Fix ONLY spelling, grammar, and punctuation errors.
+Do NOT change meaning, tone, sentence structure, vocabulary level, or stylistic choices.
+Do NOT formalize casual language or add transition words.
+Do NOT change contractions back to formal forms.
+Output ONLY the corrected text.`,
       },
       { role: 'user', content: text },
     ],
-    temperature: 0.15,
+    temperature: 0.1,
   });
   return response.choices[0]?.message?.content?.trim() || text;
 }
 
-export async function humanizeTextAdversarial(text: string, onProgress?: (attempt: number, score: number) => void): Promise<{ text: string, score: number, attempts: number }> {
+export async function humanizeTextAdversarial(
+  text: string,
+  onProgress?: (attempt: number, score: number) => void
+): Promise<{ text: string; score: number; attempts: number; breakdown?: AnalysisBreakdown }> {
   let currentText = text;
   let humanScore = 0;
   let attempts = 0;
-  const maxAttempts = 15; // Increased max attempts to ensure we hit 100% on massive/complex texts
+  const maxAttempts = 15;
   let feedback = '';
+  let lastBreakdown: AnalysisBreakdown | undefined;
 
-  while (humanScore < 1.0 && attempts < maxAttempts) { // Strict requirement: Must be exactly 1.0 (100%)
+  while (humanScore < 1.0 && attempts < maxAttempts) {
     attempts++;
-    
-    currentText = await humanizeTextSinglePass(text, feedback);
-    const detection = await analyzeText(currentText);
-    
-    humanScore = detection.humanProbability;
-    feedback = detection.reasoning;
+
+    currentText = await humanizeTextSinglePass(text, feedback || undefined);
+
+    // Use the LOCAL detection engine for verification (faster, stricter, free)
+    const localDetection = detectAILocal(currentText);
+    const localScore = localDetection.aiProbability;
+    lastBreakdown = localDetection.breakdown;
+
+    // Convert: local gives AI%, we need human% (0-1 scale)
+    humanScore = (100 - localScore) / 100;
+
+    // Build feedback from the suggestions
+    feedback = localDetection.suggestions.join('. ');
 
     if (onProgress) {
       onProgress(attempts, humanScore);
     }
-    
-    if (humanScore >= 0.999) { // Consider 99.9% or 100% as perfect
-      humanScore = 1.0;
-      break;
+
+    if (humanScore >= 0.85) {
+      // Good enough for local engine — do one final LLM check
+      const llmCheck = await llmDetect(currentText);
+      const llmHuman = (100 - llmCheck.score) / 100;
+
+      if (llmHuman >= 0.75) {
+        humanScore = Math.max(humanScore, llmHuman);
+        break;
+      }
+      // LLM still flagging it — use LLM feedback for next iteration
+      feedback = llmCheck.reasoning;
     }
   }
 
   const proofread = await proofreadAcademicOutput(currentText);
-  return { text: proofread, score: humanScore, attempts };
+
+  // Final score check on proofread version
+  const finalLocal = detectAILocal(proofread);
+  const finalHumanScore = (100 - finalLocal.aiProbability) / 100;
+
+  return {
+    text: proofread,
+    score: Math.max(humanScore, finalHumanScore),
+    attempts,
+    breakdown: lastBreakdown,
+  };
 }

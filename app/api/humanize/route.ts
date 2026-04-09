@@ -1,23 +1,25 @@
 import { NextResponse } from 'next/server';
 import { humanizeTextAdversarial } from '@/lib/ai';
 
-// Optional: Vercel specific setting to allow for longer execution times (Pro plan required for >10s/60s)
-export const maxDuration = 60; // 60 seconds
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
     const { text } = await request.json();
-    
+
     if (!text || text.trim().length === 0) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
     }
 
-    // We do the adversarial loop
+    if (text.length > 50000) {
+      return NextResponse.json({ error: 'Text exceeds 50,000 character limit' }, { status: 400 });
+    }
+
     const result = await humanizeTextAdversarial(text);
-    
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to humanize text';
     console.error('Humanize error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to humanize text' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
